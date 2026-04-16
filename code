@@ -1,0 +1,66 @@
+inventory = {}
+
+while True:
+    print("\n----- HI-CAS MENU -----")
+    print("1. Add Item")
+    print("2. Update Item")
+    print("3. Delete Item")
+    print("4. View Inventory")
+    print("5. Low Stock Check")
+    print("6. Exit")
+
+    choice = int(input("Enter your choice: "))
+
+    # Add Item
+    if choice == 1:
+        name = input("Enter item name: ")
+        qty = int(input("Enter quantity: "))
+        inventory[name] = qty
+        print("Item added successfully!")
+
+    # Update Item
+    elif choice == 2:
+        name = input("Enter item name to update: ")
+        if name in inventory:
+            qty = int(input("Enter new quantity: "))
+            inventory[name] = qty
+            print("Item updated successfully!")
+        else:
+            print("Item not found!")
+
+    # Delete Item
+    elif choice == 3:
+        name = input("Enter item name to delete: ")
+        if name in inventory:
+            del inventory[name]
+            print("Item deleted successfully!")
+        else:
+            print("Item not found!")
+
+    # View Inventory
+    elif choice == 4:
+        print("\nCurrent Inventory:")
+        if len(inventory) == 0:
+            print("Inventory is empty")
+        else:
+            for item, qty in inventory.items():
+                print(item, ":", qty)
+
+    # Low Stock Check
+    elif choice == 5:
+        print("\nLow Stock Items (less than 3):")
+        found = False
+        for item, qty in inventory.items():
+            if qty < 3:
+                print(item, ":", qty)
+                found = True
+        if not found:
+  print("No low stock items")
+
+    # Exit
+    elif choice == 6:
+        print("Exiting program...")
+        break
+
+    else:
+        print("Invalid choice! Please try again.")
