@@ -5,9 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# -----------------------------
 # Item Class
-# -----------------------------
 class Item:
     def __init__(self, name, quantity, unit, category, price_per_unit, expiry_date):
         self.name = name
@@ -34,10 +32,8 @@ class Item:
         exp = datetime.strptime(self.expiry_date, "%Y-%m-%d").date()
         return (exp - today).days
 
-
-# -----------------------------
 # Inventory System
-# -----------------------------
+
 class InventorySystem:
     def __init__(self):
         self.inventory = {}
@@ -208,9 +204,9 @@ class InventorySystem:
                 print("Invalid choice!")
 
 
-# -----------------------------
+
 # Main Program
-# -----------------------------
+
 if __name__ == "__main__":
     system = InventorySystem()
     system.menu()
