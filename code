@@ -1,66 +1,216 @@
-inventory = {}
+import json
+import csv
+from datetime import datetime, timedelta
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-while True:
-    print("\n----- HI-CAS MENU -----")
-    print("1. Add Item")
-    print("2. Update Item")
-    print("3. Delete Item")
-    print("4. View Inventory")
-    print("5. Low Stock Check")
-    print("6. Exit")
+# -----------------------------
+# Item Class
+# -----------------------------
+class Item:
+    def __init__(self, name, quantity, unit, category, price_per_unit, expiry_date):
+        self.name = name
+        self.quantity = quantity
+        self.unit = unit
+        self.category = category
+        self.price_per_unit = price_per_unit
+        self.expiry_date = expiry_date
 
-    choice = int(input("Enter your choice: "))
+    def update_quantity(self, amount):
+        self.quantity += amount
 
-    # Add Item
-    if choice == 1:
+    def consume(self, amount):
+        if amount <= self.quantity:
+            self.quantity -= amount
+        else:
+            print("Not enough stock!")
+
+    def total_value(self):
+        return self.quantity * self.price_per_unit
+
+    def days_to_expiry(self):
+        today = datetime.today().date()
+        exp = datetime.strptime(self.expiry_date, "%Y-%m-%d").date()
+        return (exp - today).days
+
+
+# -----------------------------
+# Inventory System
+# -----------------------------
+class InventorySystem:
+    def __init__(self):
+        self.inventory = {}
+        self.consumption_log = []
+
+    # Add item
+    def add_item(self):
         name = input("Enter item name: ")
-        qty = int(input("Enter quantity: "))
-        inventory[name] = qty
+        quantity = float(input("Enter quantity: "))
+        unit = input("Enter unit (kg/ml/pcs): ")
+        category = input("Enter category: ")
+        price = float(input("Enter price per unit: "))
+        expiry = input("Enter expiry date (YYYY-MM-DD): ")
+
+        item = Item(name, quantity, unit, category, price, expiry)
+        self.inventory[name] = item
         print("Item added successfully!")
 
-    # Update Item
-    elif choice == 2:
-        name = input("Enter item name to update: ")
-        if name in inventory:
-            qty = int(input("Enter new quantity: "))
-            inventory[name] = qty
-            print("Item updated successfully!")
+    # View inventory
+    def view_inventory(self):
+        if not self.inventory:
+            print("Inventory empty.")
+            return
+
+        print("\nCurrent Inventory")
+        print("-" * 80)
+        for item in self.inventory.values():
+            print(f"{item.name} | {item.quantity} {item.unit} | {item.category} | "
+                  f"Expiry: {item.expiry_date} | Value: ₹{item.total_value():.2f}")
+
+    # Consume item
+    def consume_item(self):
+        name = input("Enter item name to consume: ")
+        if name in self.inventory:
+            amount = float(input("Enter amount consumed: "))
+            self.inventory[name].consume(amount)
+
+            self.consumption_log.append({
+                "date": datetime.today().strftime("%Y-%m-%d"),
+                "item": name,
+                "amount": amount
+            })
+            print("Consumption recorded.")
         else:
-            print("Item not found!")
+            print("Item not found.")
 
-    # Delete Item
-    elif choice == 3:
-        name = input("Enter item name to delete: ")
-        if name in inventory:
-            del inventory[name]
-            print("Item deleted successfully!")
-        else:
-            print("Item not found!")
+    # Save inventory
+    def save_inventory(self):
+        data = {}
+        for name, item in self.inventory.items():
+            data[name] = {
+                "quantity": item.quantity,
+                "unit": item.unit,
+                "category": item.category,
+                "price_per_unit": item.price_per_unit,
+                "expiry_date": item.expiry_date
+            }
 
-    # View Inventory
-    elif choice == 4:
-        print("\nCurrent Inventory:")
-        if len(inventory) == 0:
-            print("Inventory is empty")
-        else:
-            for item, qty in inventory.items():
-                print(item, ":", qty)
+        with open("inventory.json", "w") as f:
+            json.dump(data, f, indent=4)
 
-    # Low Stock Check
-    elif choice == 5:
-        print("\nLow Stock Items (less than 3):")
-        found = False
-        for item, qty in inventory.items():
-            if qty < 3:
-                print(item, ":", qty)
-                found = True
-        if not found:
-  print("No low stock items")
+        with open("consumption.csv", "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["date", "item", "amount"])
+            writer.writeheader()
+            writer.writerows(self.consumption_log)
 
-    # Exit
-    elif choice == 6:
-        print("Exiting program...")
-        break
+        print("Data saved successfully.")
 
-    else:
-        print("Invalid choice! Please try again.")
+    # Load inventory
+    def load_inventory(self):
+        try:
+            with open("inventory.json", "r") as f:
+                data = json.load(f)
+
+            for name, details in data.items():
+                self.inventory[name] = Item(
+                    name,
+                    details["quantity"],
+                    details["unit"],
+                    details["category"],
+                    details["price_per_unit"],
+                    details["expiry_date"]
+                )
+
+            try:
+                with open("consumption.csv", "r") as f:
+                    reader = csv.DictReader(f)
+                    self.consumption_log = list(reader)
+            except:
+                pass
+
+            print("Data loaded successfully.")
+        except:
+            print("No previous data found.")
+
+    # Analytics
+    def analytics(self):
+        if not self.consumption_log:
+            print("No consumption data available.")
+            return
+
+        df = pd.DataFrame(self.consumption_log)
+        df["amount"] = df["amount"].astype(float)
+
+        print("\nConsumption Summary")
+        print(df.groupby("item")["amount"].sum())
+
+        daily_avg = df.groupby("item")["amount"].mean()
+        print("\nAverage Daily Consumption")
+        print(daily_avg)
+
+        # Restock suggestions
+        print("\nRestock Suggestions")
+        for item_name, avg in daily_avg.items():
+            if item_name in self.inventory:
+                remaining = self.inventory[item_name].quantity
+                days_left = remaining / avg if avg > 0 else 999
+                print(f"{item_name}: Approx {days_left:.1f} days left")
+
+    # Visualization
+    def visualize(self):
+        if not self.consumption_log:
+            print("No data to visualize.")
+            return
+
+        df = pd.DataFrame(self.consumption_log)
+        df["amount"] = df["amount"].astype(float)
+
+        consumption = df.groupby("item")["amount"].sum()
+
+        consumption.plot(kind="bar")
+        plt.title("Total Consumption per Item")
+        plt.xlabel("Items")
+        plt.ylabel("Consumed Quantity")
+        plt.tight_layout()
+        plt.show()
+
+    # Menu
+    def menu(self):
+        self.load_inventory()
+
+        while True:
+            print("\n===== HI-CAS MENU =====")
+            print("1. Add Item")
+            print("2. View Inventory")
+            print("3. Record Consumption")
+            print("4. Analytics")
+            print("5. Visualization")
+            print("6. Save & Exit")
+
+            choice = input("Enter choice: ")
+
+            if choice == "1":
+                self.add_item()
+            elif choice == "2":
+                self.view_inventory()
+            elif choice == "3":
+                self.consume_item()
+            elif choice == "4":
+                self.analytics()
+            elif choice == "5":
+                self.visualize()
+            elif choice == "6":
+                self.save_inventory()
+                print("Exiting system...")
+                break
+            else:
+                print("Invalid choice!")
+
+
+# -----------------------------
+# Main Program
+# -----------------------------
+if __name__ == "__main__":
+    system = InventorySystem()
+    system.menu()
